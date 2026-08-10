@@ -21,14 +21,6 @@ export interface Tab {
   status: 'connecting' | 'connected' | 'disconnected' | 'error'
 }
 
-export interface SplitPair {
-  id: string
-  direction: 'vertical' | 'horizontal'
-  ratio: number         // 0–1, left/top tab's share
-  tabA: string          // left/top tab id
-  tabB: string          // right/bottom tab id
-}
-
 export interface ForwardRule {
   id: string
   localPort: number

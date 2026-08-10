@@ -10,8 +10,16 @@ import MonitorOverlay from './components/MonitorOverlay'
 import AIPanel from './components/AIPanel'
 import SettingsDialog from './components/SettingsDialog'
 import BroadcastBar from './components/BroadcastBar'
-import { Tab, ConnectionConfig, SplitPair } from './types'
+import { Tab, ConnectionConfig } from './types'
 import { themes, ThemeColors, applyTheme } from './themes'
+import {
+  SplitTree,
+  splitTreeAt,
+  removeTab,
+  updateRatio,
+  getTabIds,
+  computeLayout
+} from './splits'
 
 export interface SavedConnection extends ConnectionConfig {
   id: string
@@ -58,18 +66,37 @@ export default function App(): JSX.Element {
   const [editingGroupName, setEditingGroupName] = useState('')
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [splits, setSplits] = useState<SplitPair[]>([])
+  const [splits, setSplits] = useState<SplitTree>(null)
   // Split picker: after choosing a direction, user picks which other tab to split with
   const [splitPicker, setSplitPicker] = useState<{
     sourceTabId: string
-    direction: SplitPair['direction']
+    direction: 'vertical' | 'horizontal'
   } | null>(null)
   // Drag-tab-to-split state
   const [draggingTabId, setDraggingTabId] = useState<string | null>(null)
   const [splitDropZone, setSplitDropZone] = useState<'left' | 'right' | 'top' | 'bottom' | null>(null)
+  const [dropTargetTabId, setDropTargetTabId] = useState<string | null>(null)
   const groupInputRef = useRef<HTMLInputElement>(null)
+  const terminalsRef = useRef<HTMLDivElement>(null)
+  const [termSize, setTermSize] = useState({ w: 0, h: 0 })
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? null
+
+  // ─── Split tree helpers ──────────────────────────────────────────
+  const treeTabIds = splits ? getTabIds(splits) : []
+  const treeActive = activeTabId !== null && treeTabIds.includes(activeTabId)
+  const splitLayout = computeLayout(splits, { x: 0, y: 0, w: termSize.w, h: termSize.h })
+
+  useEffect(() => {
+    const el = terminalsRef.current
+    if (!el) return
+    const ro = new ResizeObserver((entries) => {
+      const r = entries[0].contentRect
+      setTermSize({ w: r.width, h: r.height })
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   const [sidebarWidth, setSidebarWidth] = useState(220)
   const isResizing = useRef(false)
@@ -214,32 +241,19 @@ function closeTab(id: string): void {
 
   // ─── Split management ──────────────────────────────────────────────
 
-  function createSplit(tabA: string, tabB: string, direction: SplitPair['direction']): void {
-    // Remove any existing splits involving these tabs
-    setSplits((prev) => prev.filter((s) => s.tabA !== tabA && s.tabB !== tabA && s.tabA !== tabB && s.tabB !== tabB))
-    // Create new split
-    const split: SplitPair = {
-      id: genId(),
-      direction,
-      ratio: 0.5,
-      tabA,
-      tabB
-    }
-    setSplits((prev) => [...prev, split])
-    setActiveTabId(tabA)
+  function doSplit(
+    sourceId: string,
+    targetId: string,
+    direction: 'vertical' | 'horizontal',
+    newTabIndex: 0 | 1
+  ): void {
+    setSplits((prev) => splitTreeAt(prev, targetId, sourceId, direction, newTabIndex))
+    setActiveTabId(sourceId)
   }
 
-  function removeSplit(splitId: string): void {
-    setSplits((prev) => prev.filter((s) => s.id !== splitId))
-  }
-
-  // Remove any splits that reference the given tab id
+  // Remove any split leaf referencing the given tab id (collapses the tree)
   function removeSplitsForTab(tabId: string): void {
-    setSplits((prev) => prev.filter((s) => s.tabA !== tabId && s.tabB !== tabId))
-  }
-
-  function updateSplitRatio(splitId: string, ratio: number): void {
-    setSplits((prev) => prev.map((s) => (s.id === splitId ? { ...s, ratio } : s)))
+    setSplits((prev) => removeTab(prev, tabId))
   }
 
   // ─── Drag tab to terminal area → split ─────────────────────────────
@@ -251,13 +265,22 @@ function closeTab(id: string): void {
   function handleTabDragEnd(): void {
     setDraggingTabId(null)
     setSplitDropZone(null)
+    setDropTargetTabId(null)
+  }
+
+  // Find the terminal pane under the cursor (may be null)
+  function paneUnderPoint(x: number, y: number): HTMLElement | null {
+    const el = document.elementFromPoint(x, y)
+    return el?.closest('.terminal-pane') as HTMLElement | null
   }
 
   function handleTerminalDragOver(e: React.DragEvent): void {
     if (!draggingTabId) return
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    const paneEl = paneUnderPoint(e.clientX, e.clientY)
+    setDropTargetTabId(paneEl?.dataset.tabId ?? null)
+    const rect = (paneEl ?? (e.currentTarget as HTMLElement)).getBoundingClientRect()
     const x = (e.clientX - rect.left) / rect.width
     const y = (e.clientY - rect.top) / rect.height
     let zone: 'left' | 'right' | 'top' | 'bottom'
@@ -271,6 +294,7 @@ function closeTab(id: string): void {
     const related = e.relatedTarget as HTMLElement | null
     if (!related || !e.currentTarget.contains(related)) {
       setSplitDropZone(null)
+      setDropTargetTabId(null)
     }
   }
 
@@ -280,27 +304,40 @@ function closeTab(id: string): void {
     const sourceId = draggingTabId
     setSplitDropZone(null)
     setDraggingTabId(null)
+    setDropTargetTabId(null)
     if (!zone || !sourceId) return
 
     const source = tabs.find((t) => t.id === sourceId)
     if (!source) return
 
-    const direction: SplitPair['direction'] =
+    const direction: 'vertical' | 'horizontal' =
       zone === 'left' || zone === 'right' ? 'vertical' : 'horizontal'
+    const newTabIndex: 0 | 1 = zone === 'left' || zone === 'top' ? 0 : 1
 
-    // Partner tab = current active tab (must be another connected tab)
-    const partnerOk =
-      activeTabId && activeTabId !== sourceId && activeTab?.status === 'connected'
+    // Pane under the cursor decides the split target
+    const paneEl = paneUnderPoint(e.clientX, e.clientY)
+    const targetTabId = paneEl?.dataset.tabId ?? null
+    const targetOk =
+      targetTabId &&
+      targetTabId !== sourceId &&
+      tabs.some((t) => t.id === targetTabId && t.status === 'connected')
 
-    if (!partnerOk) {
-      // Reuse split picker to choose a partner tab
-      setSplitPicker({ sourceTabId: sourceId, direction })
+    if (targetOk) {
+      doSplit(sourceId, targetTabId!, direction, newTabIndex)
       return
     }
 
-    const [tabA, tabB] =
-      zone === 'left' || zone === 'top' ? [sourceId, activeTabId!] : [activeTabId!, sourceId]
-    createSplit(tabA, tabB, direction)
+    // Fallback: split the active connected tab
+    const partnerOk =
+      activeTabId && activeTabId !== sourceId && activeTab?.status === 'connected'
+
+    if (partnerOk) {
+      doSplit(sourceId, activeTabId!, direction, newTabIndex)
+      return
+    }
+
+    // Reuse split picker to choose a partner tab
+    setSplitPicker({ sourceTabId: sourceId, direction })
   }
 
   function updateTabStatus(id: string, status: Tab['status']): void {
@@ -704,36 +741,22 @@ function closeTab(id: string): void {
         />
         <div
           className="terminals"
+          ref={terminalsRef}
           onDragOver={handleTerminalDragOver}
           onDragLeave={handleTerminalDragLeave}
           onDrop={handleTerminalDrop}
         >
           {tabs.map((tab) => {
-            const split = splits.find((s) => s.tabA === tab.id || s.tabB === tab.id)
-            const inSplit = !!split
-            const splitActive = !!split && (activeTabId === split.tabA || activeTabId === split.tabB)
-            const isTabA = split?.tabA === tab.id
+            const inTree = treeTabIds.includes(tab.id)
 
-            let style: React.CSSProperties = {}
-            if (inSplit && split) {
-              if (!splitActive) {
-                // A different tab is active — this split is hidden entirely
-                style = { display: 'none' }
+            let style: React.CSSProperties
+            if (inTree) {
+              const rect = splitLayout.leaves.get(tab.id)
+              if (treeActive && rect) {
+                style = { position: 'absolute', left: rect.x, top: rect.y, width: rect.w, height: rect.h }
               } else {
-                const isVertical = split.direction === 'vertical'
-                if (isVertical) {
-                  if (isTabA) {
-                    style = { position: 'absolute', left: 0, top: 0, bottom: 0, width: `calc(${split.ratio * 100}% - 2px)` }
-                  } else {
-                    style = { position: 'absolute', right: 0, top: 0, bottom: 0, width: `calc(${(1 - split.ratio) * 100}% - 2px)` }
-                  }
-                } else {
-                  if (isTabA) {
-                    style = { position: 'absolute', left: 0, right: 0, top: 0, height: `calc(${split.ratio * 100}% - 2px)` }
-                  } else {
-                    style = { position: 'absolute', left: 0, right: 0, bottom: 0, height: `calc(${(1 - split.ratio) * 100}% - 2px)` }
-                  }
-                }
+                // A different (standalone) tab is active — the whole split tree is hidden
+                style = { display: 'none' }
               }
             } else if (tab.id === activeTabId) {
               style = { position: 'absolute', left: 0, top: 0, right: 0, bottom: 0 }
@@ -746,27 +769,45 @@ function closeTab(id: string): void {
             return (
               <div
                 key={tab.id}
-                className={`terminal-pane${inSplit ? ' split-pane' : ''}${activeTabId === tab.id ? ' active-pane' : ''}`}
+                data-tab-id={tab.id}
+                className={`terminal-pane${inTree ? ' split-pane' : ''}${activeTabId === tab.id ? ' active-pane' : ''}`}
                 style={style}
-                onClick={() => { if (inSplit) setActiveTabId(tab.id) }}
+                onClick={() => { if (inTree) setActiveTabId(tab.id) }}
               >
                 <Terminal
                   tab={tab}
-                  active={splitActive || tab.id === activeTabId}
+                  active={treeActive || tab.id === activeTabId}
                   onStatusChange={(status) => updateTabStatus(tab.id, status)}
                   aiEnabled={aiEnabled && aiOn}
                   copyOnSelect={copyOnSelect}
                 />
-                {inSplit && split && (
-                  <button className="split-close-btn" onClick={(e) => { e.stopPropagation(); removeSplit(split.id) }} title="取消分屏">×</button>
+                {inTree && (
+                  <button
+                    className="split-close-btn"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      removeSplitsForTab(tab.id)
+                    }}
+                    title="移除分屏"
+                  >
+                    ×
+                  </button>
+                )}
+                {draggingTabId && splitDropZone && dropTargetTabId === tab.id && (
+                  <SplitDropOverlay zone={splitDropZone} />
                 )}
               </div>
             )
           })}
-          {splits
-            .filter((s) => activeTabId === s.tabA || activeTabId === s.tabB)
-            .map((split) => (
-              <SplitHandle key={split.id} split={split} onUpdate={(ratio) => updateSplitRatio(split.id, ratio)} />
+          {treeActive &&
+            splitLayout.handles.map((h) => (
+              <SplitHandle
+                key={h.path.join('.')}
+                direction={h.direction}
+                barRect={h.barRect}
+                nodeRect={h.nodeRect}
+                onUpdate={(ratio) => setSplits((prev) => updateRatio(prev, h.path, ratio))}
+              />
             ))}
           {tabs.length === 0 && (
             <div className="empty-state">
@@ -774,7 +815,6 @@ function closeTab(id: string): void {
               <button onClick={() => setShowConnect(true)}>新建连接</button>
             </div>
           )}
-          {draggingTabId && splitDropZone && <SplitDropOverlay zone={splitDropZone} />}
         </div>
         {activeTab && activeTab.status === 'connected' && (
           <div className="toolbar">
@@ -852,8 +892,7 @@ function closeTab(id: string): void {
                 .filter((t) => t.id !== splitPicker.sourceTabId && t.status === 'connected')
                 .map((t) => (
                   <li key={t.id} className="split-picker-item" onClick={() => {
-                    const [tabA, tabB] = [splitPicker.sourceTabId, t.id]
-                    createSplit(tabA, tabB, splitPicker.direction)
+                    doSplit(splitPicker.sourceTabId, t.id, splitPicker.direction, 0)
                     setSplitPicker(null)
                   }}>
                     <span className="split-picker-name">{t.title}</span>

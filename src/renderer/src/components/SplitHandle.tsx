@@ -1,30 +1,32 @@
 import React, { useState } from 'react'
-import { SplitPair } from '../types'
+import { Rect, SplitDirection } from '../splits'
 
 interface Props {
-  split: SplitPair
+  direction: SplitDirection
+  barRect: Rect
+  nodeRect: Rect
   onUpdate: (ratio: number) => void
 }
 
-export default function SplitHandle({ split, onUpdate }: Props): JSX.Element {
-  const { direction, ratio } = split
+export default function SplitHandle({ direction, barRect, nodeRect, onUpdate }: Props): JSX.Element {
   const isVertical = direction === 'vertical'
   const [dragging, setDragging] = useState(false)
 
-  const style: React.CSSProperties = isVertical
-    ? { position: 'absolute', top: 0, bottom: 0, left: `calc(${ratio * 100}% - 2px)`, width: 4 }
-    : { position: 'absolute', left: 0, right: 0, top: `calc(${ratio * 100}% - 2px)`, height: 4 }
+  const style: React.CSSProperties = {
+    position: 'absolute',
+    left: barRect.x,
+    top: barRect.y,
+    width: barRect.w,
+    height: barRect.h
+  }
 
   function handleMouseDown(e: React.MouseEvent): void {
     e.preventDefault()
     setDragging(true)
-    const container = (e.currentTarget as HTMLElement).parentElement
-    if (!container) return
-    const rect = container.getBoundingClientRect()
 
     function onMouseMove(ev: MouseEvent): void {
-      const total = isVertical ? rect.width : rect.height
-      const pos = isVertical ? ev.clientX - rect.left : ev.clientY - rect.top
+      const total = isVertical ? nodeRect.w : nodeRect.h
+      const pos = isVertical ? ev.clientX - nodeRect.x : ev.clientY - nodeRect.y
       onUpdate(Math.max(0.15, Math.min(0.85, pos / total)))
     }
 
