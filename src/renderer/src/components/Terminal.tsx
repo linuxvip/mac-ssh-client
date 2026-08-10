@@ -335,14 +335,29 @@ export default function Terminal({ tab, active, onStatusChange, aiEnabled, copyO
     }
   }, [active, tab.status])
 
-  // Refit on window resize
+  // Refit when the container/pane size changes (window resize, split ratio,
+  // split create/remove) — window 'resize' alone misses pane-level changes
   useEffect(() => {
-    if (!active) return
-    const handleResize = () => {
-      requestAnimationFrame(() => fitAddonRef.current?.fit())
+    if (!containerRef.current) return
+    const container = containerRef.current
+    let rafId: number | null = null
+
+    const scheduleFit = () => {
+      if (rafId !== null) cancelAnimationFrame(rafId)
+      rafId = requestAnimationFrame(() => {
+        rafId = null
+        fitAddonRef.current?.fit()
+      })
     }
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
+
+    const observer = new ResizeObserver(scheduleFit)
+    observer.observe(container)
+    window.addEventListener('resize', scheduleFit)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', scheduleFit)
+      if (rafId !== null) cancelAnimationFrame(rafId)
+    }
   }, [active])
 
   return (

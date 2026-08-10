@@ -531,6 +531,12 @@ body {
   min-height: 0;
 }
 
+/* Per-tab pane — each terminal stays mounted here; split just repositions it */
+.terminal-pane {
+  position: absolute;
+  overflow: hidden;
+}
+
 .terminal-container {
   position: absolute;
   inset: 0;
@@ -547,16 +553,6 @@ body {
 }
 
 /* Split Terminal */
-.split-container {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-}
-
-.split-container.split-dragging {
-  user-select: none;
-}
-
 .split-pane {
   position: relative;
   overflow: hidden;
@@ -570,7 +566,6 @@ body {
 
 /* Split handle — draggable divider */
 .split-handle {
-  flex-shrink: 0;
   background: var(--border);
   transition: background 0.15s;
   z-index: 5;
@@ -578,7 +573,7 @@ body {
 
 .split-handle:hover,
 .split-handle:active,
-.split-dragging .split-handle {
+.split-handle.active {
   background: var(--accent);
 }
 
@@ -592,36 +587,79 @@ body {
   cursor: row-resize;
 }
 
-/* Tab split drop indicators — half-tab highlight */
-.split-drop {
-  position: relative;
-}
-
-.split-drop::after {
-  content: '';
+/* Drag-tab-to-split overlay — shown when a tab is dragged over the terminal area */
+.split-overlay {
   position: absolute;
-  background: var(--accent);
-  z-index: 10;
+  inset: 0;
+  z-index: 40;
+  display: flex;
   pointer-events: none;
-  opacity: 0.25;
-  border-radius: 4px;
-  margin: 2px;
 }
 
-.split-drop-left::after {
-  left: 0; top: 0; bottom: 0; width: 50%;
+.split-overlay-zone {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  margin: 6px;
+  background: rgba(128, 128, 128, 0.15);
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+  opacity: 0.6;
+  transition: background 0.12s, border-color 0.12s, opacity 0.12s;
 }
 
-.split-drop-right::after {
-  right: 0; top: 0; bottom: 0; width: 50%;
+.split-overlay-zone.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  border-style: solid;
+  opacity: 0.85;
 }
 
-.split-drop-top::after {
-  top: 0; left: 0; right: 0; height: 50%;
+.split-overlay-left,
+.split-overlay-right {
+  top: 0;
+  bottom: 0;
+  width: 30%;
 }
 
-.split-drop-bottom::after {
-  bottom: 0; left: 0; right: 0; height: 50%;
+.split-overlay-left {
+  left: 0;
+}
+
+.split-overlay-right {
+  right: 0;
+}
+
+.split-overlay-top,
+.split-overlay-bottom {
+  left: 30%;
+  right: 30%;
+  height: 40%;
+}
+
+.split-overlay-top {
+  top: 0;
+}
+
+.split-overlay-bottom {
+  bottom: 0;
+}
+
+.split-overlay-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.split-overlay-icon {
+  font-size: 20px;
+  line-height: 1;
 }
 
 /* Context submenu — appears to the right of parent item */

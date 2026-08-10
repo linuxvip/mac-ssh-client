@@ -32,7 +32,8 @@ function makeProps(overrides: Record<string, unknown> = {}) {
     onDisconnect: vi.fn(),
     onReconnect: vi.fn(),
     onSplitRequest: vi.fn(),
-    onSplitDrag: vi.fn(),
+    onTabDragStart: vi.fn(),
+    onTabDragEnd: vi.fn(),
     ...overrides
   }
 }
