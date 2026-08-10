@@ -832,6 +832,211 @@ body {
   background: var(--bg-hover);
 }
 
+/* Broadcast Bar — multi-tab command input */
+.broadcast-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.broadcast-targets {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.broadcast-mode-toggle {
+  display: flex;
+  gap: 2px;
+}
+
+.broadcast-mode-toggle button {
+  background: none;
+  border: 1px solid var(--border-light);
+  color: var(--fg-muted);
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.broadcast-mode-toggle button:hover {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+
+.broadcast-mode-toggle button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.broadcast-target-info {
+  background: var(--bg-input);
+  border: 1px solid var(--border-light);
+  color: var(--fg);
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.broadcast-target-info:hover {
+  background: var(--bg-hover);
+}
+
+.broadcast-arrow {
+  font-size: 9px;
+  color: var(--fg-muted);
+}
+
+.broadcast-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-input);
+  border: 1px solid var(--border-light);
+  color: var(--fg);
+  padding: 5px 10px;
+  border-radius: 3px;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.broadcast-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.broadcast-input:disabled {
+  opacity: 0.5;
+}
+
+.broadcast-send {
+  background: var(--accent);
+  color: #fff;
+  border: 1px solid var(--accent);
+  padding: 5px 14px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.broadcast-send:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.broadcast-send:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.broadcast-picker {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  width: 340px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  z-index: 50;
+}
+
+.broadcast-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--fg-muted);
+  position: sticky;
+  top: 0;
+  background: var(--bg-sidebar);
+}
+
+.broadcast-picker-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.broadcast-picker-actions button {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.broadcast-picker-actions button:hover {
+  color: var(--accent-hover);
+}
+
+.broadcast-picker-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+}
+
+.broadcast-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.broadcast-picker-item:hover {
+  background: var(--bg-hover);
+}
+
+.broadcast-picker-item.checked .broadcast-picker-name {
+  color: var(--fg);
+}
+
+.broadcast-picker-item input[type='checkbox'] {
+  pointer-events: none;
+  accent-color: var(--accent);
+  margin: 0;
+}
+
+.broadcast-picker-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg-muted);
+}
+
+.broadcast-picker-host {
+  color: var(--fg-dim);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.broadcast-picker-empty {
+  padding: 12px 10px;
+  color: var(--fg-dim);
+  font-size: 12px;
+  text-align: center;
+}
+
 /* Dialog */
 .dialog-overlay {
   position: fixed;

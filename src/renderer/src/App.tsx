@@ -9,6 +9,7 @@ import FileManager from './components/FileManager'
 import MonitorOverlay from './components/MonitorOverlay'
 import AIPanel from './components/AIPanel'
 import SettingsDialog from './components/SettingsDialog'
+import BroadcastBar from './components/BroadcastBar'
 import { Tab, ConnectionConfig, SplitPair } from './types'
 import { themes, ThemeColors, applyTheme } from './themes'
 
@@ -343,6 +344,12 @@ function closeTab(id: string): void {
   function handleAIExecute(cmd: string): void {
     if (activeTabId) {
       window.api.ssh.send(activeTabId, cmd + '\n')
+    }
+  }
+
+  function handleBroadcastSend(targetIds: string[], command: string): void {
+    for (const id of targetIds) {
+      window.api.ssh.send(id, command + '\n')
     }
   }
 
@@ -778,6 +785,9 @@ function closeTab(id: string): void {
               </button>
             )}
           </div>
+        )}
+        {tabs.some((t) => t.status === 'connected') && (
+          <BroadcastBar tabs={tabs} onSend={handleBroadcastSend} />
         )}
       </div>
       {(showConnect || editingConnection) && (
