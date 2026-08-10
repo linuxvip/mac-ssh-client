@@ -24,15 +24,20 @@ function isChinese(ch: string): boolean {
   return /[\u4e00-\u9fff]/.test(ch)
 }
 
+export const DEFAULT_FONT_FAMILY = 'Menlo, Monaco, "Courier New", monospace'
+export const DEFAULT_FONT_SIZE = 14
+
 interface Props {
   tab: Tab
   active: boolean
   onStatusChange: (status: Tab['status']) => void
   aiEnabled?: boolean
   copyOnSelect?: boolean
+  fontFamily?: string
+  fontSize?: number
 }
 
-export default function Terminal({ tab, active, onStatusChange, aiEnabled, copyOnSelect }: Props): JSX.Element {
+export default function Terminal({ tab, active, onStatusChange, aiEnabled, copyOnSelect, fontFamily, fontSize }: Props): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const xtermRef = useRef<XTerm | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
@@ -68,8 +73,8 @@ export default function Terminal({ tab, active, onStatusChange, aiEnabled, copyO
     const term = new XTerm({
       allowProposedApi: true,
       cursorBlink: true,
-      fontSize: 14,
-      fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+      fontSize: fontSize ?? DEFAULT_FONT_SIZE,
+      fontFamily: fontFamily || DEFAULT_FONT_FAMILY,
       theme: { background: colors.background, foreground: colors.foreground, cursor: colors.cursor, selectionBackground: colors.selectionBackground }
     })
     const fitAddon = new FitAddon()
@@ -334,6 +339,17 @@ export default function Terminal({ tab, active, onStatusChange, aiEnabled, copyO
       requestAnimationFrame(() => fitAddonRef.current?.fit())
     }
   }, [active, tab.status])
+
+  // Live font family/size updates from settings — no terminal rebuild needed
+  useEffect(() => {
+    const term = xtermRef.current
+    if (!term || !fitAddonRef.current) return
+    term.options.fontFamily = fontFamily || DEFAULT_FONT_FAMILY
+    term.options.fontSize = fontSize ?? DEFAULT_FONT_SIZE
+    fitAddonRef.current.fit()
+    const { cols, rows } = term
+    window.api.ssh.resize(tab.id, cols, rows)
+  }, [fontFamily, fontSize, tab.id])
 
   // Refit when the container/pane size changes (window resize, split ratio,
   // split create/remove) — window 'resize' alone misses pane-level changes

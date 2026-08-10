@@ -2238,5 +2238,71 @@ body {
   font-size: 11px;
   color: var(--fg-dim);
   margin-top: 4px;
-  margin-left: 24px;
+}
+
+/* Terminal font settings */
+.font-size-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.font-size-row input[type='number'] {
+  width: 64px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-light);
+  border-radius: 3px;
+  color: var(--fg);
+  padding: 5px 8px;
+  font-size: 12px;
+  outline: none;
+}
+
+.font-size-row input[type='number']:focus {
+  border-color: var(--accent);
+}
+
+.font-size-unit {
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+
+.font-size-btn {
+  background: var(--bg-input);
+  color: var(--fg);
+  border: 1px solid var(--border-light);
+  border-radius: 3px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.font-size-btn:hover {
+  background: var(--bg-hover);
+}
+
+.font-size-reset {
+  margin-left: auto;
+}
+
+.font-preview {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  color: var(--fg);
+  line-height: 1.6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.font-preview-label {
+  display: inline-block;
+  color: var(--fg-dim);
+  font-size: 11px;
+  margin-right: 8px;
+  font-family: inherit;
 }

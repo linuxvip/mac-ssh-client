@@ -1,6 +1,20 @@
 import React, { useState, useEffect } from 'react'
 import { themes, ThemeColors, applyTheme } from '../themes'
 
+const FONT_PRESETS: { label: string; value: string }[] = [
+  { label: '系统默认 (Menlo)', value: 'Menlo, Monaco, "Courier New", monospace' },
+  { label: 'SF Mono', value: '"SF Mono", Menlo, monospace' },
+  { label: 'Menlo', value: 'Menlo, monospace' },
+  { label: 'Monaco', value: 'Monaco, Menlo, monospace' },
+  { label: 'JetBrains Mono', value: '"JetBrains Mono", Menlo, monospace' },
+  { label: 'Fira Code', value: '"Fira Code", Menlo, monospace' },
+  { label: 'Source Code Pro', value: '"Source Code Pro", Menlo, monospace' },
+  { label: 'Courier New', value: '"Courier New", monospace' },
+  { label: '自定义…', value: '__custom__' }
+]
+
+const CUSTOM_VALUE = '__custom__'
+
 const AI_PRESETS: Record<string, { apiUrl: string; model: string }> = {
   'OpenAI': { apiUrl: 'https://api.openai.com', model: 'gpt-4o' },
   'DeepSeek': { apiUrl: 'https://api.deepseek.com', model: 'deepseek-chat' },
@@ -20,13 +34,19 @@ interface AIConfig {
 
 interface Props {
   currentTheme: string
-  onApply: (themeName: string, colors: ThemeColors) => void
+  onApply: (
+    themeName: string,
+    colors: ThemeColors,
+    terminal: { fontFamily: string; fontSize: number }
+  ) => void
   onClose: () => void
 }
 
 export default function SettingsDialog({ currentTheme, onApply, onClose }: Props): JSX.Element {
   const [selected, setSelected] = useState(currentTheme)
   const [copyOnSelect, setCopyOnSelect] = useState(true)
+  const [fontFamily, setFontFamily] = useState('')
+  const [fontSize, setFontSize] = useState(14)
   const [aiConfig, setAiConfig] = useState<AIConfig>({
     provider: '',
     apiUrl: '',
@@ -41,6 +61,8 @@ export default function SettingsDialog({ currentTheme, onApply, onClose }: Props
         setAiConfig(settings.ai)
       }
       setCopyOnSelect(settings?.copyOnSelect !== false)
+      setFontFamily(settings?.fontFamily || '')
+      setFontSize(settings?.fontSize ?? 14)
       setAiLoaded(true)
     })
   }, [])
@@ -65,7 +87,8 @@ export default function SettingsDialog({ currentTheme, onApply, onClose }: Props
 
   function handleConfirm(): void {
     const t = themes.find((th) => th.name === selected)
-    if (t) onApply(selected, t.colors)
+    const finalFont = fontFamily.trim() || FONT_PRESETS[0].value
+    if (t) onApply(selected, t.colors, { fontFamily: finalFont, fontSize })
 
     // Save AI config and terminal settings alongside theme
     window.api.settings.load().then((settings: any) => {
@@ -73,6 +96,8 @@ export default function SettingsDialog({ currentTheme, onApply, onClose }: Props
         ...settings,
         theme: selected,
         copyOnSelect,
+        fontFamily: finalFont,
+        fontSize,
         ai: aiConfig
       })
     })
@@ -130,6 +155,74 @@ export default function SettingsDialog({ currentTheme, onApply, onClose }: Props
             </label>
           </div>
           <p className="settings-hint">松开鼠标后自动将选中的文本复制到剪贴板</p>
+        </div>
+
+        <div className="settings-section">
+          <h3>终端字体</h3>
+          <div className="form-row">
+            <label>字体</label>
+            <select
+              className="font-select"
+              value={FONT_PRESETS.some((p) => p.value === fontFamily) ? fontFamily : CUSTOM_VALUE}
+              onChange={(e) => {
+                const v = e.target.value
+                setFontFamily(v === CUSTOM_VALUE ? '' : v)
+              }}
+              style={{
+                flex: 1,
+                background: 'var(--bg-input)',
+                border: '1px solid var(--border-light)',
+                borderRadius: '3px',
+                color: 'var(--fg)',
+                padding: '5px 8px',
+                fontSize: '12px',
+                outline: 'none'
+              }}
+            >
+              {FONT_PRESETS.map((p) => (
+                <option key={p.value} value={p.value}>{p.label}</option>
+              ))}
+            </select>
+          </div>
+          {!FONT_PRESETS.some((p) => p.value === fontFamily) && (
+            <div className="form-row">
+              <label>自定义字体</label>
+              <input
+                type="text"
+                value={fontFamily}
+                onChange={(e) => setFontFamily(e.target.value)}
+                placeholder={'Menlo, Monaco, "Courier New", monospace'}
+              />
+            </div>
+          )}
+          <div className="form-row">
+            <label>字号</label>
+            <div className="font-size-row">
+              <input
+                type="number"
+                min={10}
+                max={28}
+                value={fontSize}
+                onChange={(e) => setFontSize(Math.max(10, Math.min(28, Number(e.target.value) || 14)))}
+              />
+              <span className="font-size-unit">px</span>
+              <button className="font-size-btn" onClick={() => setFontSize((s) => Math.max(10, s - 1))}>A−</button>
+              <button className="font-size-btn" onClick={() => setFontSize((s) => Math.min(28, s + 1))}>A+</button>
+              <button
+                className="font-size-btn font-size-reset"
+                onClick={() => { setFontFamily(''); setFontSize(14) }}
+              >
+                重置
+              </button>
+            </div>
+          </div>
+          <div
+            className="font-preview"
+            style={{ fontFamily: fontFamily.trim() || FONT_PRESETS[0].value, fontSize: `${fontSize}px` }}
+          >
+            <span className="font-preview-label">预览</span>
+            abcdefg ABC 0123 终端字体预览
+          </div>
         </div>
 
         {aiLoaded && (

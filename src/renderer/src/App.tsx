@@ -58,6 +58,8 @@ export default function App(): JSX.Element {
   const [aiEnabled, setAiEnabled] = useState(false)
   const [aiOn, setAiOn] = useState(true)
   const [copyOnSelect, setCopyOnSelect] = useState(true)
+  const [fontFamily, setFontFamily] = useState('')
+  const [fontSize, setFontSize] = useState(14)
   const [currentTheme, setCurrentTheme] = useState('深色 (默认)')
   const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null)
   const [dragOverConnId, setDragOverConnId] = useState<string | null>(null)
@@ -159,6 +161,12 @@ export default function App(): JSX.Element {
       }
       if (settings?.copyOnSelect !== undefined) {
         setCopyOnSelect(!!settings.copyOnSelect)
+      }
+      if (settings?.fontFamily) {
+        setFontFamily(settings.fontFamily)
+      }
+      if (settings?.fontSize) {
+        setFontSize(settings.fontSize)
       }
     })
   }, [])
@@ -368,8 +376,14 @@ function closeTab(id: string): void {
     setEditingConnection(null)
   }
 
-  function handleThemeApply(themeName: string, _colors: ThemeColors): void {
+  function handleThemeApply(
+    themeName: string,
+    _colors: ThemeColors,
+    terminal: { fontFamily: string; fontSize: number }
+  ): void {
     setCurrentTheme(themeName)
+    setFontFamily(terminal.fontFamily)
+    setFontSize(terminal.fontSize)
     // Reload settings to pick up AI config changes
     window.api.settings.load().then((settings: any) => {
       if (settings?.ai?.apiUrl && settings?.ai?.model) {
@@ -795,6 +809,8 @@ function closeTab(id: string): void {
                   onStatusChange={(status) => updateTabStatus(tab.id, status)}
                   aiEnabled={aiEnabled && aiOn}
                   copyOnSelect={copyOnSelect}
+                  fontFamily={fontFamily}
+                  fontSize={fontSize}
                 />
                 {inTree && (
                   <button
