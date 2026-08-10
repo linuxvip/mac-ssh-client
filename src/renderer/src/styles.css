@@ -1551,23 +1551,26 @@ body {
 }
 
 /* Monitor Overlay — Glass + Ring Gauges */
-.monitor-overlay {
-  position: absolute;
-  top: 8px;
-  right: 22px;
-  z-index: 10;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: none;
-  min-width: 230px;
+.monitor-overlay,
+.monitor-panel {
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 8px;
+  border: 1px solid var(--border);
   font-size: 11px;
   color: #e0e0e0;
   user-select: none;
-  pointer-events: auto;
   overflow: hidden;
+}
+
+/* Monitor panel inside the sidebar */
+.sidebar-monitor {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 8px;
+}
+
+.monitor-panel {
+  margin-bottom: 8px;
 }
 
 .monitor-header {
@@ -1578,11 +1581,11 @@ body {
   cursor: pointer;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   background: none;
-  border-radius: 14px 14px 0 0;
+  border-radius: 8px 8px 0 0;
 }
 
-.monitor-collapsed .monitor-header {
-  border-bottom: none;
+.monitor-panel > .monitor-header:first-child:last-child {
+  border-radius: 8px;
 }
 
 .monitor-title {
@@ -1617,6 +1620,33 @@ body {
 
 .monitor-body {
   padding: 8px 10px 10px;
+}
+
+.monitor-session-host {
+  font-family: Menlo, Monaco, monospace;
+  font-size: 10px;
+  color: var(--fg-muted);
+  text-align: center;
+  padding: 2px 0 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: 8px;
+  word-break: break-all;
+}
+
+.monitor-empty {
+  padding: 24px 8px;
+  text-align: center;
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+
+.monitor-empty p {
+  margin: 4px 0;
+}
+
+.monitor-empty .monitor-empty-hint {
+  color: var(--fg-dim);
+  font-size: 11px;
 }
 
 .monitor-loading {

@@ -24,7 +24,7 @@ export interface ConnectionGroup {
   collapsed: boolean
 }
 
-type SidebarTab = 'connections' | 'portforward'
+type SidebarTab = 'connections' | 'portforward' | 'monitor'
 
 function genId(): string {
   return crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
@@ -518,6 +518,12 @@ function closeTab(id: string): void {
           >
             端口转发
           </button>
+          <button
+            className={`sidebar-tab ${sidebarTab === 'monitor' ? 'active' : ''}`}
+            onClick={() => setSidebarTab('monitor')}
+          >
+            监控
+          </button>
         </div>
 
         {sidebarTab === 'connections' && (
@@ -644,6 +650,22 @@ function closeTab(id: string): void {
           <PortForwardView savedConnections={savedConnections} />
         )}
 
+        {sidebarTab === 'monitor' && (
+          <div className="sidebar-monitor">
+            <div className="sidebar-header">
+              <span>系统监控</span>
+            </div>
+            {activeTab && activeTab.status === 'connected' ? (
+              <MonitorOverlay key={`monitor-${activeTab.id}`} sessionId={activeTab.id} host={activeTab.config.host} />
+            ) : (
+              <div className="monitor-empty">
+                <p>暂无活动连接</p>
+                <p className="monitor-empty-hint">连接 SSH 后在此查看系统监控</p>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="sidebar-footer">
           <button className="btn-settings" onClick={() => setShowSettings(true)}>
             设置
@@ -739,9 +761,6 @@ function closeTab(id: string): void {
             .map((split) => (
               <SplitHandle key={split.id} split={split} onUpdate={(ratio) => updateSplitRatio(split.id, ratio)} />
             ))}
-          {activeTab && activeTab.status === 'connected' && (
-            <MonitorOverlay key={`monitor-${activeTab.id}`} sessionId={activeTab.id} />
-          )}
           {tabs.length === 0 && (
             <div className="empty-state">
               <p>暂无活动连接</p>

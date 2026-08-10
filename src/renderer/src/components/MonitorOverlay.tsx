@@ -90,12 +90,15 @@ function RingGauge({ percent, label, detail, size = 64 }: {
 
 interface Props {
   sessionId: string
+  host?: string
 }
 
-export default function MonitorOverlay({ sessionId }: Props): JSX.Element {
+export default function MonitorOverlay({ sessionId, host }: Props): JSX.Element {
   const [data, setData] = useState<MonitorData | null>(null)
   const [collapsed, setCollapsed] = useState(true)
   const unsubRef = useRef<(() => void) | null>(null)
+
+  const activeHost = host || sessionId
 
   useEffect(() => {
     window.api.monitor.start(sessionId)
@@ -112,11 +115,11 @@ export default function MonitorOverlay({ sessionId }: Props): JSX.Element {
   }, [sessionId])
 
   return (
-    <div className={`monitor-overlay ${collapsed ? 'monitor-collapsed' : ''}`}>
+    <div className="monitor-panel">
       <div className="monitor-header" onClick={() => setCollapsed(!collapsed)}>
         <span className="monitor-title">
           <span className="monitor-pulse" />
-          MONITOR
+          {collapsed ? '展开监控' : '折叠监控'}
         </span>
         <span className="monitor-toggle">{collapsed ? '▸' : '▾'}</span>
       </div>
@@ -128,6 +131,7 @@ export default function MonitorOverlay({ sessionId }: Props): JSX.Element {
             </div>
           ) : (
             <>
+              <div className="monitor-session-host">{activeHost}</div>
               <div className="gauge-row">
                 <RingGauge percent={data.cpu} label="CPU" detail={`${data.cpu.toFixed(1)}%`} />
                 <RingGauge percent={data.mem.percent} label="MEM" detail={`${formatBytes(data.mem.used)}/${formatBytes(data.mem.total)}`} />
