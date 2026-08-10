@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, Menu } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, Menu, dialog } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { createSSHConnection, testSSHConnection, closeSSHConnection, sendSSHData, forwardPort, stopForwarding, getSession } from './ssh'
@@ -6,6 +6,9 @@ import { startMonitor, stopMonitor } from './monitor'
 import { loadConnections, saveConnections, loadSettings, saveSettings } from './store'
 import { sftpList, sftpDownload, sftpUpload, sftpDelete, sftpMkdir, sftpRename, getHomeDir } from './sftp'
 import { classifyAndProcess, collectSystemInfo, clearSystemInfoCache, AIConfig } from './ai'
+
+// True once the user confirmed quitting — allows the window to actually close
+let quitting = false
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -20,6 +23,28 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
     }
+  })
+
+  // Ask for confirmation before closing (red button, Cmd+Q, menu Quit)
+  mainWindow.on('close', (e) => {
+    if (quitting) return
+    e.preventDefault()
+    dialog
+      .showMessageBox(mainWindow, {
+        type: 'question',
+        buttons: ['退出', '取消'],
+        defaultId: 0,
+        cancelId: 1,
+        title: '退出确认',
+        message: '确定要退出 SSH 客户端吗？',
+        detail: '所有活动 SSH 连接将被断开。'
+      })
+      .then(({ response }) => {
+        if (response === 0) {
+          quitting = true
+          app.quit()
+        }
+      })
   })
 
   mainWindow.on('ready-to-show', () => {
