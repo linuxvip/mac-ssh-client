@@ -50,6 +50,24 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-width: 0;
+}
+
+/* Collapsed sidebar — narrow strip with an expand button */
+.sidebar-collapsed {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  cursor: pointer;
+  color: var(--fg-muted);
+  font-size: 14px;
+  user-select: none;
+}
+
+.sidebar-collapsed:hover {
+  color: var(--fg);
+  background: var(--bg-hover);
 }
 
 .sidebar-resizer {

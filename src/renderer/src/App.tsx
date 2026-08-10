@@ -99,10 +99,12 @@ export default function App(): JSX.Element {
   }, [])
 
   const [sidebarWidth, setSidebarWidth] = useState(220)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const isResizing = useRef(false)
 
   function handleResizerMouseDown(e: React.MouseEvent): void {
     e.preventDefault()
+    setSidebarCollapsed(false)
     isResizing.current = true
     document.body.style.cursor = 'col-resize'
     document.body.style.userSelect = 'none'
@@ -548,8 +550,14 @@ function closeTab(id: string): void {
 
   return (
     <div className="app">
-      <div className="sidebar" style={{ width: sidebarWidth }}>
-        <div className="sidebar-tabs">
+      <div className="sidebar" style={{ width: sidebarCollapsed ? 30 : sidebarWidth }}>
+        {sidebarCollapsed ? (
+          <div className="sidebar-collapsed" onClick={() => setSidebarCollapsed(false)} title="展开侧边栏">
+            <span>☰</span>
+          </div>
+        ) : (
+          <>
+            <div className="sidebar-tabs">
           <button
             className={`sidebar-tab ${sidebarTab === 'connections' ? 'active' : ''}`}
             onClick={() => setSidebarTab('connections')}
@@ -720,8 +728,15 @@ function closeTab(id: string): void {
             </button>
           )}
         </div>
+          </>
+        )}
       </div>
-      <div className="sidebar-resizer" onMouseDown={handleResizerMouseDown} />
+      <div
+        className="sidebar-resizer"
+        onMouseDown={handleResizerMouseDown}
+        onDoubleClick={() => setSidebarCollapsed((v) => !v)}
+        title="拖动调整宽度 | 双击收起/展开"
+      />
       <div className="main">
         <TabBar
           tabs={tabs}
