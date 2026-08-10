@@ -159,6 +159,35 @@ npm run dist
 
 > **注意**：打包时不进行代码签名。如需签名，请在 macOS 钥匙串中配置 "Developer ID Application" 证书，electron-builder 会自动检测并使用。
 
+### 自动化打包脚本
+
+一键完成 编译 → 打包 .app → 签名 → 安装 → 打开：
+
+```bash
+./pack.sh
+```
+
+脚本内容见 `pack.sh`，等价于以下手动步骤：
+
+```bash
+# 1. 编译 + 打包 .app
+npm run build && npx electron-builder --mac --dir
+
+# 2. ad-hoc 临时签名（无 Developer ID 证书时使用）
+codesign --force --deep --sign - "dist/mac-arm64/SSH Client.app"
+
+# 3. 安装到 /Applications 并清除 Gatekeeper 隔离属性
+rm -rf "/Applications/SSH Client.app"
+cp -R "dist/mac-arm64/SSH Client.app" /Applications/
+xattr -dr com.apple.quarantine "/Applications/SSH Client.app"
+```
+
+> **无证书签名的问题**：未签名（或仅 ad-hoc 签名）的 .app 会被 macOS Gatekeeper 判定为恶意软件并拦截，报"已阻止恶意软件"。本地开发可用 `codesign --force --deep --sign -` 临时签名解决。**若要分发他人**，需要：
+> 1. Apple Developer 账号，申请 "Developer ID Application" 证书
+> 2. 配置签名：`CSC_LINK` / `CSC_KEY_PASSWORD` 环境变量，electron-builder 自动签名
+> 3. 公证（notarize）：`npx electron-builder --mac --config.mac.notarize=true` 或 electron-builder 24+ 配置 `mac.notarize`
+> 4. 公证后需 `xcodebuild -exportArchive` 或用 `ditto` 重新签名/加时间戳，确保用户无弹窗安装
+
 ### 测试
 
 ```bash
