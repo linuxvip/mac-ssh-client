@@ -80,6 +80,8 @@ export default function App(): JSX.Element {
   const [dropTargetTabId, setDropTargetTabId] = useState<string | null>(null)
   const groupInputRef = useRef<HTMLInputElement>(null)
   const terminalsRef = useRef<HTMLDivElement>(null)
+  const activeTabIdRef = useRef<string | null>(null)
+  const closeTabRef = useRef<(id: string) => void>(() => {})
   const [termSize, setTermSize] = useState({ w: 0, h: 0 })
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? null
@@ -169,6 +171,22 @@ export default function App(): JSX.Element {
         setFontSize(settings.fontSize)
       }
     })
+  }, [])
+
+  activeTabIdRef.current = activeTabId
+  closeTabRef.current = closeTab
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent): void {
+      if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey) return
+      if (e.key.toLowerCase() !== 'w') return
+      e.preventDefault()
+      e.stopPropagation()
+      const id = activeTabIdRef.current
+      if (id) closeTabRef.current(id)
+    }
+    window.addEventListener('keydown', handleKeyDown, true)
+    return () => window.removeEventListener('keydown', handleKeyDown, true)
   }, [])
 
   useEffect(() => {

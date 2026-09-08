@@ -77,6 +77,11 @@ export default function TabBar({
           className={`tab ${tab.id === activeTabId ? 'active' : ''} status-${tab.status}${
             dragIndex === index ? ' dragging' : ''
           }${dropIndex === index && dragIndex !== index ? ' drop-target' : ''}`}
+          onMouseDown={(e) => {
+            // Switch on press so a tiny mouse movement (which turns the click
+            // into an HTML5 drag) can no longer swallow the selection.
+            if (e.button === 0) onSelect(tab.id)
+          }}
           onClick={() => onSelect(tab.id)}
           onContextMenu={(e) => {
             e.preventDefault()
@@ -93,6 +98,7 @@ export default function TabBar({
           <span className="tab-title">{tab.title}</span>
           <button
             className="tab-close"
+            onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); onClose(tab.id) }}
           >×</button>
         </div>

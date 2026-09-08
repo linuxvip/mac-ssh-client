@@ -110,6 +110,7 @@ export default function Terminal({ tab, active, onStatusChange, aiEnabled, copyO
           }
           const { cols, rows } = term
           window.api.ssh.resize(tab.id, cols, rows)
+          term.focus()
         } else {
           term.writeln(`\r\n\x1b[31m连接失败: ${result.error || '未知错误'}\x1b[0m`)
           onStatusChange('error')
@@ -336,7 +337,10 @@ export default function Terminal({ tab, active, onStatusChange, aiEnabled, copyO
   useEffect(() => {
     if (active && fitAddonRef.current) {
       // Use rAF to wait for layout update (e.g. toolbar appearing)
-      requestAnimationFrame(() => fitAddonRef.current?.fit())
+      requestAnimationFrame(() => {
+        fitAddonRef.current?.fit()
+        xtermRef.current?.focus()
+      })
     }
   }, [active, tab.status])
 
