@@ -15,6 +15,13 @@ const FONT_PRESETS: { label: string; value: string }[] = [
 
 const CUSTOM_VALUE = '__custom__'
 
+const SCROLLBACK_PRESETS: { label: string; value: number }[] = [
+  { label: '1,000 行（默认）', value: 1000 },
+  { label: '10,000 行', value: 10000 },
+  { label: '100,000 行', value: 100000 },
+  { label: '500,000 行', value: 500000 }
+]
+
 const AI_PRESETS: Record<string, { apiUrl: string; model: string }> = {
   'OpenAI': { apiUrl: 'https://api.openai.com', model: 'gpt-4o' },
   'DeepSeek': { apiUrl: 'https://api.deepseek.com', model: 'deepseek-chat' },
@@ -37,7 +44,7 @@ interface Props {
   onApply: (
     themeName: string,
     colors: ThemeColors,
-    terminal: { fontFamily: string; fontSize: number }
+    terminal: { fontFamily: string; fontSize: number; scrollback: number }
   ) => void
   onClose: () => void
 }
@@ -47,6 +54,7 @@ export default function SettingsDialog({ currentTheme, onApply, onClose }: Props
   const [copyOnSelect, setCopyOnSelect] = useState(true)
   const [fontFamily, setFontFamily] = useState('')
   const [fontSize, setFontSize] = useState(14)
+  const [scrollback, setScrollback] = useState(1000)
   const [aiConfig, setAiConfig] = useState<AIConfig>({
     provider: '',
     apiUrl: '',
@@ -63,6 +71,7 @@ export default function SettingsDialog({ currentTheme, onApply, onClose }: Props
       setCopyOnSelect(settings?.copyOnSelect !== false)
       setFontFamily(settings?.fontFamily || '')
       setFontSize(settings?.fontSize ?? 14)
+      setScrollback(settings?.scrollback ?? 1000)
       setAiLoaded(true)
     })
   }, [])
@@ -88,7 +97,7 @@ export default function SettingsDialog({ currentTheme, onApply, onClose }: Props
   function handleConfirm(): void {
     const t = themes.find((th) => th.name === selected)
     const finalFont = fontFamily.trim() || FONT_PRESETS[0].value
-    if (t) onApply(selected, t.colors, { fontFamily: finalFont, fontSize })
+    if (t) onApply(selected, t.colors, { fontFamily: finalFont, fontSize, scrollback })
 
     // Save AI config and terminal settings alongside theme
     window.api.settings.load().then((settings: any) => {
@@ -98,6 +107,7 @@ export default function SettingsDialog({ currentTheme, onApply, onClose }: Props
         copyOnSelect,
         fontFamily: finalFont,
         fontSize,
+        scrollback,
         ai: aiConfig
       })
     })
@@ -155,6 +165,35 @@ export default function SettingsDialog({ currentTheme, onApply, onClose }: Props
             </label>
           </div>
           <p className="settings-hint">松开鼠标后自动将选中的文本复制到剪贴板</p>
+          <div className="form-row">
+            <label>回滚行数</label>
+            <select
+              className="font-select"
+              value={scrollback}
+              onChange={(e) => setScrollback(Number(e.target.value))}
+              style={{
+                flex: 1,
+                background: 'var(--bg-input)',
+                border: '1px solid var(--border-light)',
+                borderRadius: '3px',
+                color: 'var(--fg)',
+                padding: '5px 8px',
+                fontSize: '12px',
+                outline: 'none'
+              }}
+            >
+              {SCROLLBACK_PRESETS.map((p) => (
+                <option key={p.value} value={p.value}>{p.label}</option>
+              ))}
+            </select>
+          </div>
+          <p className="settings-hint">终端向上可回看的最大行数。xterm 按「显示行」计数，长日志换行会成倍占用，行数越大内存越多。</p>
+          {scrollback >= 100000 && (
+            <p className="settings-warn">
+              ⚠️ 已选 {scrollback.toLocaleString()} 行，预计占用内存约 {Math.round(scrollback / 1000)} MB 以上。
+              超大日志建议改用 <code>less</code> 或重定向到文件。
+            </p>
+          )}
         </div>
 
         <div className="settings-section">

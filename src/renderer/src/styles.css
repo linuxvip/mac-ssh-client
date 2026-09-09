@@ -483,6 +483,7 @@ body {
 .tab.active {
   background: var(--bg);
   color: var(--fg);
+  box-shadow: inset 0 -2px 0 var(--accent);
 }
 
 .tab.dragging {
@@ -568,6 +569,60 @@ body {
 
 .terminal-container .xterm-viewport {
   width: 100% !important;
+}
+
+/* Terminal search bar (Cmd+F) */
+.term-search-bar {
+  position: absolute;
+  top: 8px;
+  right: 16px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  padding: 4px 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+
+.term-search-input {
+  width: 200px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--fg);
+  font-size: 12px;
+  padding: 4px 8px;
+  outline: none;
+}
+
+.term-search-input:focus {
+  border-color: var(--accent);
+}
+
+.term-search-count {
+  min-width: 44px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--fg-muted);
+}
+
+.term-search-btn {
+  background: none;
+  border: none;
+  color: var(--fg-muted);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+
+.term-search-btn:hover {
+  background: var(--bg-hover);
+  color: var(--fg);
 }
 
 /* Split Terminal */
@@ -2238,6 +2293,19 @@ body {
   font-size: 11px;
   color: var(--fg-dim);
   margin-top: 4px;
+}
+
+.settings-warn {
+  font-size: 11px;
+  color: var(--warning);
+  margin-top: 6px;
+  line-height: 1.5;
+}
+
+.settings-warn code {
+  background: var(--bg-input);
+  padding: 1px 4px;
+  border-radius: 3px;
 }
 
 /* Terminal font settings */
