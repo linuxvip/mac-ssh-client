@@ -60,6 +60,7 @@ export default function App(): JSX.Element {
   const [copyOnSelect, setCopyOnSelect] = useState(true)
   const [fontFamily, setFontFamily] = useState('')
   const [fontSize, setFontSize] = useState(14)
+  const [scrollback, setScrollback] = useState(1000)
   const [currentTheme, setCurrentTheme] = useState('深色 (默认)')
   const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null)
   const [dragOverConnId, setDragOverConnId] = useState<string | null>(null)
@@ -82,6 +83,7 @@ export default function App(): JSX.Element {
   const terminalsRef = useRef<HTMLDivElement>(null)
   const activeTabIdRef = useRef<string | null>(null)
   const closeTabRef = useRef<(id: string) => void>(() => {})
+  const tabsRef = useRef<Tab[]>([])
   const [termSize, setTermSize] = useState({ w: 0, h: 0 })
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? null
@@ -170,20 +172,49 @@ export default function App(): JSX.Element {
       if (settings?.fontSize) {
         setFontSize(settings.fontSize)
       }
+      if (settings?.scrollback) {
+        setScrollback(settings.scrollback)
+      }
     })
   }, [])
 
   activeTabIdRef.current = activeTabId
   closeTabRef.current = closeTab
+  tabsRef.current = tabs
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent): void {
-      if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey) return
-      if (e.key.toLowerCase() !== 'w') return
-      e.preventDefault()
-      e.stopPropagation()
-      const id = activeTabIdRef.current
-      if (id) closeTabRef.current(id)
+      const mod = e.metaKey || e.ctrlKey
+
+      if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'w') {
+        e.preventDefault()
+        e.stopPropagation()
+        const id = activeTabIdRef.current
+        if (id) closeTabRef.current(id)
+        return
+      }
+
+      if (e.ctrlKey && e.key === 'Tab') {
+        const list = tabsRef.current
+        if (list.length < 2) return
+        const idx = list.findIndex((t) => t.id === activeTabIdRef.current)
+        if (idx === -1) return
+        e.preventDefault()
+        e.stopPropagation()
+        const next = e.shiftKey ? (idx - 1 + list.length) % list.length : (idx + 1) % list.length
+        setActiveTabId(list[next].id)
+        return
+      }
+
+      if (mod && !e.shiftKey && !e.altKey && /^[1-9]$/.test(e.key)) {
+        const list = tabsRef.current
+        const target = list[Number(e.key) - 1]
+        if (target) {
+          e.preventDefault()
+          e.stopPropagation()
+          setActiveTabId(target.id)
+        }
+      }
     }
     window.addEventListener('keydown', handleKeyDown, true)
     return () => window.removeEventListener('keydown', handleKeyDown, true)
@@ -397,11 +428,12 @@ function closeTab(id: string): void {
   function handleThemeApply(
     themeName: string,
     _colors: ThemeColors,
-    terminal: { fontFamily: string; fontSize: number }
+    terminal: { fontFamily: string; fontSize: number; scrollback: number }
   ): void {
     setCurrentTheme(themeName)
     setFontFamily(terminal.fontFamily)
     setFontSize(terminal.fontSize)
+    setScrollback(terminal.scrollback)
     // Reload settings to pick up AI config changes
     window.api.settings.load().then((settings: any) => {
       if (settings?.ai?.apiUrl && settings?.ai?.model) {
@@ -829,6 +861,7 @@ function closeTab(id: string): void {
                   copyOnSelect={copyOnSelect}
                   fontFamily={fontFamily}
                   fontSize={fontSize}
+                  scrollback={scrollback}
                 />
                 {inTree && (
                   <button

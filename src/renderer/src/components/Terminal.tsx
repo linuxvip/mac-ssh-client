@@ -3,6 +3,7 @@ import { Terminal as XTerm } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { UnicodeGraphemesAddon } from '@xterm/addon-unicode-graphemes'
+import { SearchAddon } from '@xterm/addon-search'
 import '@xterm/xterm/css/xterm.css'
 import { Tab } from '../types'
 
@@ -16,6 +17,41 @@ function getTermTheme(): { background: string; foreground: string; cursor: strin
   }
 }
 
+function isLightColor(color: string): boolean {
+  const m = color.trim().match(/^#?([0-9a-f]{6})$/i)
+  if (!m) return false
+  const n = parseInt(m[1], 16)
+  return (0.299 * ((n >> 16) & 0xff) + 0.587 * ((n >> 8) & 0xff) + 0.114 * (n & 0xff)) > 140
+}
+
+function getSearchDecorations(): {
+  matchBackground: string
+  matchBorder: string
+  matchOverviewRuler: string
+  activeMatchBackground: string
+  activeMatchBorder: string
+  activeMatchColorOverviewRuler: string
+} {
+  if (isLightColor(getTermTheme().background)) {
+    return {
+      matchBackground: '#fff2b8',
+      matchBorder: '#e0a800',
+      matchOverviewRuler: '#e0a800',
+      activeMatchBackground: '#ffd166',
+      activeMatchBorder: '#ff7b00',
+      activeMatchColorOverviewRuler: '#ff7b00'
+    }
+  }
+  return {
+    matchBackground: '#4a3c00',
+    matchBorder: '#c8960c',
+    matchOverviewRuler: '#c8960c',
+    activeMatchBackground: '#7a4a00',
+    activeMatchBorder: '#ffa500',
+    activeMatchColorOverviewRuler: '#ffa500'
+  }
+}
+
 // AI trigger prefix — only input starting with this will be sent to AI
 const AI_PREFIX = '?'
 
@@ -26,6 +62,7 @@ function isChinese(ch: string): boolean {
 
 export const DEFAULT_FONT_FAMILY = 'Menlo, Monaco, "Courier New", monospace'
 export const DEFAULT_FONT_SIZE = 14
+export const DEFAULT_SCROLLBACK = 1000
 
 interface Props {
   tab: Tab
@@ -35,12 +72,19 @@ interface Props {
   copyOnSelect?: boolean
   fontFamily?: string
   fontSize?: number
+  scrollback?: number
 }
 
-export default function Terminal({ tab, active, onStatusChange, aiEnabled, copyOnSelect, fontFamily, fontSize }: Props): JSX.Element {
+export default function Terminal({ tab, active, onStatusChange, aiEnabled, copyOnSelect, fontFamily, fontSize, scrollback }: Props): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const xtermRef = useRef<XTerm | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
+  const searchAddonRef = useRef<SearchAddon | null>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const activeRef = useRef(active)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [searchResults, setSearchResults] = useState({ resultIndex: -1, resultCount: 0 })
   const inputBufferRef = useRef('')
   const aiEnabledRef = useRef(aiEnabled)
   const aiInputModeRef = useRef(false) // true = current line is AI query (local echo)
@@ -61,6 +105,44 @@ export default function Terminal({ tab, active, onStatusChange, aiEnabled, copyO
     copyOnSelectRef.current = !!copyOnSelect
   }, [copyOnSelect])
 
+  useEffect(() => {
+    activeRef.current = active
+  }, [active])
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent): void {
+      if (!activeRef.current) return
+      if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey) return
+      if (e.key.toLowerCase() !== 'f') return
+      const container = containerRef.current
+      if (!container || !container.contains(document.activeElement)) return
+      e.preventDefault()
+      e.stopPropagation()
+      setSearchOpen(true)
+      requestAnimationFrame(() => searchInputRef.current?.focus())
+    }
+    window.addEventListener('keydown', handleKeyDown, true)
+    return () => window.removeEventListener('keydown', handleKeyDown, true)
+  }, [])
+
+  function findNextMatch(): void {
+    const addon = searchAddonRef.current
+    if (addon && searchTerm) addon.findNext(searchTerm, { incremental: false, decorations: getSearchDecorations() })
+  }
+
+  function findPrevMatch(): void {
+    const addon = searchAddonRef.current
+    if (addon && searchTerm) addon.findPrevious(searchTerm, { incremental: false, decorations: getSearchDecorations() })
+  }
+
+  function closeSearch(): void {
+    setSearchOpen(false)
+    setSearchTerm('')
+    setSearchResults({ resultIndex: -1, resultCount: 0 })
+    searchAddonRef.current?.clearDecorations()
+    xtermRef.current?.focus()
+  }
+
   const sendToTerminal = useCallback((cmd: string) => {
     window.api.ssh.send(tab.id, cmd)
   }, [tab.id])
@@ -75,10 +157,15 @@ export default function Terminal({ tab, active, onStatusChange, aiEnabled, copyO
       cursorBlink: true,
       fontSize: fontSize ?? DEFAULT_FONT_SIZE,
       fontFamily: fontFamily || DEFAULT_FONT_FAMILY,
+      scrollback: scrollback ?? DEFAULT_SCROLLBACK,
       theme: { background: colors.background, foreground: colors.foreground, cursor: colors.cursor, selectionBackground: colors.selectionBackground }
     })
     const fitAddon = new FitAddon()
     term.loadAddon(fitAddon)
+    const searchAddon = new SearchAddon()
+    term.loadAddon(searchAddon)
+    searchAddonRef.current = searchAddon
+    searchAddon.onDidChangeResults((r) => setSearchResults(r))
     try {
       const graphemesAddon = new UnicodeGraphemesAddon()
       term.loadAddon(graphemesAddon)
@@ -350,10 +437,22 @@ export default function Terminal({ tab, active, onStatusChange, aiEnabled, copyO
     if (!term || !fitAddonRef.current) return
     term.options.fontFamily = fontFamily || DEFAULT_FONT_FAMILY
     term.options.fontSize = fontSize ?? DEFAULT_FONT_SIZE
+    term.options.scrollback = scrollback ?? DEFAULT_SCROLLBACK
     fitAddonRef.current.fit()
     const { cols, rows } = term
     window.api.ssh.resize(tab.id, cols, rows)
-  }, [fontFamily, fontSize, tab.id])
+  }, [fontFamily, fontSize, scrollback, tab.id])
+
+  useEffect(() => {
+    const addon = searchAddonRef.current
+    if (!addon) return
+    if (!searchOpen || !searchTerm) {
+      addon.clearDecorations()
+      setSearchResults({ resultIndex: -1, resultCount: 0 })
+      return
+    }
+    addon.findNext(searchTerm, { incremental: true, decorations: getSearchDecorations() })
+  }, [searchTerm, searchOpen])
 
   // Refit when the container/pane size changes (window resize, split ratio,
   // split create/remove) — window 'resize' alone misses pane-level changes
@@ -387,6 +486,37 @@ export default function Terminal({ tab, active, onStatusChange, aiEnabled, copyO
       style={{ display: active ? 'block' : 'none' }}
     >
       {copied && <div className="copy-toast">已复制</div>}
+      {searchOpen && (
+        <div className="term-search-bar">
+          <input
+            ref={searchInputRef}
+            className="term-search-input"
+            value={searchTerm}
+            placeholder="搜索终端内容..."
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                if (e.shiftKey) findPrevMatch()
+                else findNextMatch()
+              } else if (e.key === 'Escape') {
+                e.preventDefault()
+                closeSearch()
+              }
+            }}
+          />
+          <span className="term-search-count">
+            {searchTerm
+              ? searchResults.resultCount > 0
+                ? `${searchResults.resultIndex + 1}/${searchResults.resultCount}`
+                : '无匹配'
+              : ''}
+          </span>
+          <button className="term-search-btn" onClick={findPrevMatch} title="上一个 (Shift+Enter)">↑</button>
+          <button className="term-search-btn" onClick={findNextMatch} title="下一个 (Enter)">↓</button>
+          <button className="term-search-btn" onClick={closeSearch} title="关闭 (Esc)">×</button>
+        </div>
+      )}
     </div>
   )
 }

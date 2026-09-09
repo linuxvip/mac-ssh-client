@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { Tab } from '../types'
 
 export type SplitDirection = 'vertical' | 'horizontal'
@@ -25,7 +25,12 @@ export default function TabBar({
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dropIndex, setDropIndex] = useState<number | null>(null)
   const dragRef = useRef<number | null>(null)
+  const listRef = useRef<HTMLDivElement>(null)
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; tab: Tab } | null>(null)
+
+  useEffect(() => {
+    listRef.current?.querySelector<HTMLElement>('.tab.active')?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+  }, [activeTabId])
 
   function handleDragStart(e: React.DragEvent, index: number): void {
     dragRef.current = index
@@ -70,7 +75,7 @@ export default function TabBar({
   )
 
   return (
-    <div className="tab-bar">
+    <div className="tab-bar" ref={listRef}>
       {tabs.map((tab, index) => (
         <div
           key={tab.id}
